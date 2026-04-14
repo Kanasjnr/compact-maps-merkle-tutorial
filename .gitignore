@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+*.zkir
+# Keep the generated contract artifacts, but ignore build output
+src/managed/**/compiler/
+src/managed/**/contract/*.js
+src/managed/**/contract/*.d.ts
+# Wait, actually we NEED the generated TS artifacts for the project to work, 
+# but we should ignore the ZKIR and compiler intermediate JSONs.

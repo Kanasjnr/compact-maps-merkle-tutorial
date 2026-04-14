@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../../../",
+  "sources": ["contract/registry.compact", "compiler/standard-library.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;MAQA,AAAA,QASC;;;;;cATuB,cAAuB;;;;;;;;;;;;;;;;;;yCAAvB,cAAuB;;;;;;;;;0CAAvB,cAAuB;;;OAS9C;MAGD,AAAA,mBAGC;;;;;;;;;;;;;;;;;;;;;;OAAA;MAGD,AAAA,WAGC;;;;;cAH0B,SAAkB;;;;;;;;;;;;;;;;;;yCAAlB,SAAkB;;;;;;;;;6CAAlB,SAAkB;;;OAG5C;MAGD,AAAA,aAEC;;;;;cAF4B,SAAkB;;;;;;;;;;;;;;;;;;yCAAlB,SAAkB;;;;;;;;;+CAAlB,SAAkB;;;OAE9C;;;;;;;;GACA;EAnCD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAKA;;;;;;;;;;yEAAkD;;;;;;;GA8BjD;ECnCD,AAAA;;;;;;;;EDQA,AAAA,WASC,4BATuB,cAAuB;UACrC,MAAqB;UAIrB,gBAAuC,GAAb,cAAY;UAG5C,KAAQ,GAAQ,MAAI;IAApB;;;;;;;;;;2HAAA,KAAQ;;;2HAAoB,gBAAc;;;wEAAlC;;GACX;EAGD,AAAA,sBAGC;UAFS,MAAqB;UAC3B,KAAQ,GAAQ,MAAI;IAApB;;;;;;;;;;2HAAA,KAAQ;;;wEAAA;;GACX;EAGD,AAAA,cAGC,4BAH0B,SAAkB;mCAElC;;;;;;;;;;;;;;8HAAyB,SAAO;;;wGAAxB;GAClB;EAGD,AAAA,gBAEC,4BAF4B,SAAkB;mCACpC;;;;;;;;;;;0JAAyB,SAAO;;;;wGAAxB;GAClB;;;;;;;;;;;;;;;;IA7BD;;;;;uCAAA;;;;;;;;;;;;;;;;4GAAkD;;;;;;uCAAlD;;;;;;;;;;;;4GAAkD;;;;;;;;;;;;;;uCAAlD;;;;;;;;;;;;;;;4GAAkD;;;;;;;;;;;;;;uCAAlD;;;;;;;;;;;;;;;;;4GAAkD;;;;;;;;;KAAA;;;;;;;;;;"
+}

@@ -1,0 +1,35 @@
+pragma language_version >= 0.16 && <= 0.21;
+
+import CompactStandardLibrary;
+
+// We use Bytes<32> for user public keys (addresses)
+export ledger registry: Map<Bytes<32>, Bytes<32>>;
+
+// Register a profile hash for the caller
+export circuit register(profile_hash: Bytes<32>): [] {
+    const user = ownPublicKey();
+    
+    // profile_hash is a circuit parameter. 
+    // To store it on the ledger, we MUST disclose it.
+    const d_profile_hash = disclose(profile_hash);
+    
+    // Use .bytes to extract the Bytes<32> from the ZswapCoinPublicKey struct
+    registry.insert(user.bytes, d_profile_hash);
+}
+
+// Remove the caller's registration
+export circuit remove_registration(): [] {
+    const user = ownPublicKey();
+    registry.remove(user.bytes);
+}
+
+// Public lookup helper (can be called by anyone)
+export circuit get_profile(user_pk: Bytes<32>): Bytes<32> {
+    // Parameters that flow to ledger operations must be disclosed
+    return registry.lookup(disclose(user_pk));
+}
+
+// Check if a user is registered
+export circuit is_registered(user_pk: Bytes<32>): Boolean {
+    return registry.member(disclose(user_pk));
+}

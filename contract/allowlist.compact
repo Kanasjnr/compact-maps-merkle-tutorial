@@ -1,0 +1,23 @@
+pragma language_version >= 0.16 && <= 0.21;
+
+import CompactStandardLibrary;
+
+export ledger allowlist: MerkleTree<20, Bytes<32>>;
+
+export circuit update_allowlist(member_hash: Bytes<32>): [] {
+    const d_member = disclose(member_hash);
+    allowlist.insert(d_member);
+}
+
+export circuit access_exclusive_area(leaf: Bytes<32>): [] {
+    const d_leaf = disclose(leaf);
+    const path = get_membership_path(d_leaf);
+    
+    // The proof verification logic
+    const computed_root = merkleTreePathRoot<20, Bytes<32>>(path);
+    
+    // We must disclose the computed root for it to be verified against the on-chain MerkleTree state
+    assert(allowlist.checkRoot(disclose(computed_root)), "Access Denied: Not on the allowlist");
+}
+
+witness get_membership_path(leaf: Bytes<32>): MerkleTreePath<20, Bytes<32>>;
