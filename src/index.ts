@@ -1,4 +1,3 @@
-import { MerkleTree } from "./lib/merkle_tree.js";
 import { AllowlistProver } from "./prover/allowlist_witnesses.js";
 import { Contract as RegistryContract } from "./managed/registry/contract/index.js";
 import { Contract as AllowlistContract } from "./managed/allowlist/contract/index.js";
@@ -17,32 +16,33 @@ async function main() {
     "------------------------------------------------------------------\n",
   );
 
-  // --- SETUP ---
   console.log("STEP 1: Initializing Infrastructure...");
   await sleep(800);
-  const depth = 20;
-  const mt = new MerkleTree(depth);
-  const allowlistWitnesses = new AllowlistProver(mt);
 
+  const prover = new AllowlistProver();
   const registryContract = new RegistryContract({});
   const allowlistContract = new AllowlistContract({
     get_membership_path: (context, leaf) =>
-      allowlistWitnesses.get_membership_path(context, leaf),
+      prover.get_membership_path(context as any, leaf),
   });
 
-  const toCleanUint8Array = (buf: Uint8Array) => Uint8Array.from(buf);
+  // Ensure keys are backed by a plain ArrayBuffer (not a Node.js Buffer pool slice)
+  const toPureU8 = (raw: Uint8Array | Buffer) => {
+    const u8 = new Uint8Array(32);
+    u8.set(raw);
+    return u8;
+  };
 
-  const alicePk = toCleanUint8Array(
+  const alicePk = toPureU8(
     createHash("sha256").update("alice-public-key").digest(),
   );
-  const bobPk = toCleanUint8Array(
+  const bobPk = toPureU8(
     createHash("sha256").update("bob-public-key").digest(),
   );
-  const profileHash = toCleanUint8Array(
+  const profileHash = toPureU8(
     createHash("sha256").update("Alice: Principal Engineer").digest(),
   );
 
-  // Initial States
   const registryInit = registryContract.initialState({
     initialPrivateState: undefined,
     initialZswapLocalState: { coinPublicKey: alicePk, units: 0n } as any,
@@ -57,7 +57,7 @@ async function main() {
   console.log("✅ Ready. Identity 'Bob' created (Unregistered).\n");
   await sleep(1000);
 
-  // --- TASK 1: MAPS ---
+  // ── TASK 1: MAPS ──────────────────────────────────────────────────────────
   console.log(
     "------------------------------------------------------------------",
   );
@@ -69,34 +69,45 @@ async function main() {
   console.log("[User] Alice is registering her profile...");
 
   try {
-    // Proper Context Initialization
-    const context = __compactRuntime.createCircuitContext(
+    const initialContext = __compactRuntime.createCircuitContext(
       __compactRuntime.dummyContractAddress(),
-      registryInit.currentZswapLocalState,
+      { bytes: alicePk },
       registryInit.currentContractState,
       registryInit.currentPrivateState,
     );
 
-    registryContract.circuits.register(context, profileHash);
+    const { context: updatedContext } = registryContract.circuits.register(
+      initialContext,
+      profileHash,
+    );
     console.log("└─ ✅ Circuit Execution: Proof Generated.");
 
-    console.log("\n[Check] Verifying registration status on the Ledger:");
-    const aliceRes = registryContract.circuits.is_registered(context, alicePk);
+    console.log(
+      "\n[Check] Verifying registration status on the Ledger (Live Context):",
+    );
+    const aliceRes = registryContract.circuits.is_registered(
+      updatedContext,
+      alicePk,
+    );
     console.log(
       `└─ Query Alice: Result is ${aliceRes.result} (Expected: true)`,
     );
 
-    const bobRes = registryContract.circuits.is_registered(context, bobPk);
+    const bobRes = registryContract.circuits.is_registered(
+      updatedContext,
+      bobPk,
+    );
     console.log(`└─ Query Bob:   Result is ${bobRes.result} (Expected: false)`);
   } catch (e: any) {
     console.error(`❌ Registry Task failed: ${e.message}`);
   }
+
   console.log(
     "------------------------------------------------------------------\n",
   );
   await sleep(2000);
 
-  // --- TASK 2: MERKLE TREES ---
+  // ── TASK 2: MERKLE TREES ──────────────────────────────────────────────────
   console.log(
     "------------------------------------------------------------------",
   );
@@ -106,20 +117,35 @@ async function main() {
   );
 
   console.log("[Admin] Inserting Alice into the Merkle Tree...");
-  mt.insert(alicePk);
-  console.log(`└─ 🌐 Root Hash: ${mt.root.toString("hex").slice(0, 16)}...`);
+  const adminCtx = __compactRuntime.createCircuitContext(
+    __compactRuntime.dummyContractAddress(),
+    { bytes: alicePk },
+    allowlistInit.currentContractState,
+    allowlistInit.currentPrivateState,
+  );
+  const { context: updatedAllowlistCtx } =
+    allowlistContract.circuits.update_allowlist(adminCtx, alicePk);
+
+  // Best-effort root display — internals may vary across runtime versions
+  const internal = updatedAllowlistCtx as any;
+  let rootDisplay = "updated";
+  try {
+    const digest =
+      internal?.ledger?.allowlist?.root?.() ??
+      internal?.contractState?.allowlist?.root?.();
+    if (digest?.field !== undefined) {
+      rootDisplay = digest.field.toString(16).slice(0, 16);
+    }
+  } catch (_) {}
+  console.log(`└─ 🌐 Root Hash: ${rootDisplay}...`);
   await sleep(1500);
 
   console.log("[User] Alice proving membership anonymously...");
   try {
-    const context = __compactRuntime.createCircuitContext(
-      __compactRuntime.dummyContractAddress(),
-      allowlistInit.currentZswapLocalState,
-      allowlistInit.currentContractState,
-      allowlistInit.currentPrivateState,
+    allowlistContract.circuits.access_exclusive_area(
+      updatedAllowlistCtx,
+      alicePk,
     );
-
-    allowlistContract.circuits.access_exclusive_area(context, alicePk);
     console.log("└─ ✅ ACCESS GRANTED: Proof was valid.");
   } catch (e: any) {
     console.error(`└─ ❌ ACCESS DENIED: ${e.message}`);
@@ -127,17 +153,10 @@ async function main() {
 
   console.log("\n[User] Bob trying to prove membership (Unregistered)...");
   try {
-    const bobInit = allowlistContract.initialState({
-      initialPrivateState: undefined,
-      initialZswapLocalState: { coinPublicKey: bobPk, units: 0n } as any,
-    });
-    const context = __compactRuntime.createCircuitContext(
-      __compactRuntime.dummyContractAddress(),
-      bobInit.currentZswapLocalState,
-      bobInit.currentContractState,
-      bobInit.currentPrivateState,
+    allowlistContract.circuits.access_exclusive_area(
+      updatedAllowlistCtx,
+      bobPk,
     );
-    allowlistContract.circuits.access_exclusive_area(context, bobPk);
   } catch (e: any) {
     console.log(
       `└─ ✅ EXPECTED FAILURE: Bob is not on the list. Circuit asserted false.`,
@@ -148,9 +167,6 @@ async function main() {
     "\n------------------------------------------------------------------",
   );
   console.log("🏁 DEMO COMPLETE");
-  console.log(
-    "The tutorial is now running on REAL machine-generated SDK artifacts.",
-  );
   console.log(
     "------------------------------------------------------------------",
   );
